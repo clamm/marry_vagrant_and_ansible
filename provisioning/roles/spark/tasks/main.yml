@@ -1,8 +1,4 @@
 ---
-- hosts: all
-  vars: 
-    spark_version: 1.6.1
-  tasks:
     # install java to test Spark on vagrant
     - name: Install java
       yum: name=java state=present
