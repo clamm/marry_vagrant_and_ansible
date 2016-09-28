@@ -1,0 +1,38 @@
+---
+- name: Download file to install pip
+  get_url: 
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: /tmp/get-pip.py
+
+- name: Check if pip is installed
+  shell: which pip
+  register: which_pip
+  ignore_errors: true
+
+- name: Install pip if not already available
+  shell: python /tmp/get-pip.py
+  become: true
+  when: which_pip|failed
+
+- name: Install git
+  yum: state=present name=git
+  become: true
+
+- name: Clones the Airbnb knowledge repo
+  git: repo=https://github.com/airbnb/knowledge-repo.git
+       dest=/tmp/knowledge-repo
+       update=no
+
+# TODO: install only if not already available
+# state=present doesn't seem to work
+- name: Install the Airbnb knowledge repo
+  pip: name="/tmp/knowledge-repo[all]" state=present
+  become: true
+
+# TODO: This step seems to hang. Fix it.
+# - name:  Clone the existing knowledge data repository
+#   git: repo=https://github.com/clamm/my_posts.git
+#        dest=/tmp/knowledge-repo
+
+# TODO: Read about webserver deployment in https://github.com/airbnb/knowledge-repo and follow their lead
+    
