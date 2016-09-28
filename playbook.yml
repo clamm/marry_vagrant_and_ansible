@@ -1,0 +1,62 @@
+---
+- hosts: all
+  vars: 
+    spark_version: 1.6.1
+  tasks:
+    # install java to test Spark on vagrant
+    - name: Install java
+      yum: name=java state=present
+      become: true
+
+    - name: Set JAVA_HOME
+      shell: echo JAVA_HOME is $JAVA_HOME
+      environment:
+        JAVA_HOME: /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.101-3.b13.el7_2.x86_64/jre
+      register: shellout
+    - debug: var=shellout
+
+    # parts for jenkins playbook:
+    - name: Download Scala (dependency to Spark)
+      get_url: 
+        url: http://downloads.typesafe.com/scala/2.11.7/scala-2.11.7.tgz 
+        dest: /tmp/scala-2.11.7.tgz 
+
+    - name: Unarchive Scala
+      unarchive: src=/tmp/scala-2.11.7.tgz dest=/usr/lib/ copy=no
+      become: true
+
+    - name: Link to specific version to general scala folder
+      file: src=/usr/lib/scala-2.11.7 path=/usr/lib/scala state=link
+      become: true
+
+    - name: Add scala to PATH and check execution with displaying the version
+      command: echo
+      environment: 
+        PATH: "{{ ansible_env.PATH }}:/usr/lib/scala/bin"
+
+    - name: Download Spark to remote host
+      get_url:
+        url: "http://mirror2.shellbot.com/apache/spark/spark-{{ spark_version }}/spark-{{ spark_version }}-bin-hadoop2.6.tgz"
+        dest: /tmp/spark-{{ spark_version }}-bin-hadoop2.6.tgz
+
+    - name: Unarchive Spark on remote host
+      unarchive: src=/tmp/spark-{{ spark_version }}-bin-hadoop2.6.tgz dest=/usr/lib/ copy=no
+      become: true
+
+    - name: Set SPARK_HOME variable
+      command: ls $SPARK_HOME/bin
+      environment:
+        SPARK_HOME: "/usr/lib/spark-{{ spark_version }}-bin-hadoop2.6"
+
+    - name: Make Ansible recognize the newly set SPARK_HOME
+      set_fact:
+        SPARK_HOME: "/usr/lib/spark-{{ spark_version }}-bin-hadoop2.6"
+
+    - name: Add Spark to path and check execution with displaying path of pyspark
+      command: which pyspark
+      environment:
+        PATH: "{{ ansible_env.PATH }}:{{ SPARK_HOME }}/bin"
+
+    - name: Set Spark log level to WARN
+      template: src=log4j.properties.j2 dest={{ SPARK_HOME }}/conf/log4j.properties
+      become: true
